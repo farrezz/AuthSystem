@@ -41,8 +41,8 @@ namespace AuthSystem.API.Services
 
             // save user to database
 
-            _Context.Users.Add(user);
-            await _Context.SaveChangesAsync();
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
 
             // generate token for the new user and return response
             var token = _tokenService.GenerateToken(user);
@@ -58,8 +58,34 @@ namespace AuthSystem.API.Services
 
         public  async Task<AuthResponse> LoginAsync(LoginRequest request)
         {
-            //implementing later
-            throw new NotImplementedException();
+           // find user by username
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
+
+            //if user not found or password, throw unathorized
+            if (user == null || !_PasswordHasher.VerifyPassword(request.Password, user.PasswordHash))
+            {
+                throw new Exception("Invalid username or password.");
+            }
+
+            //verify password agaínst stored hash
+            var isPasswordValid = _PasswordHasher.VerifyPassword(request.Password, user.PasswordHash);
+            if (!isPasswordValid)
+            {
+                throw new Exception("Invalid username or password.");
+            }
+
+            //Generate JWT token 
+            var token = _tokenService.GenerateToken(user);
+
+            //return auth response with token and user info
+            return new AuthResponse
+            {
+                Token = token,
+                Username = user.Username,
+                Email = user.Email,
+                ExpiresAt = DateTime.UtcNow.AddHours(1) // token expiration time
+            };
+
         }
 
     }

@@ -1,5 +1,6 @@
 ﻿using AuthSystem.API.DTOs;
 using AuthSystem.API.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AuthSystem.API.Controllers
@@ -9,10 +10,12 @@ namespace AuthSystem.API.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly ITokenBlacklistService _tokenBlacklistService;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, ITokenBlacklistService tokenBlacklistService)
         {
             _authService = authService;
+            _tokenBlacklistService = tokenBlacklistService;
         }
 
         [HttpPost("register")]
@@ -42,6 +45,18 @@ namespace AuthSystem.API.Controllers
                 return BadRequest(new { message = ex.Message });
             }
 
+        }
+
+        [HttpGet("logout")]
+        [Authorize]
+        public IActionResult Logout()
+        {
+            // Get the token from the Authorization header
+            var token = HttpContext.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+
+            _tokenBlacklistService.BlacklistToken(token);
+
+            return Ok((new { message = "Logged out successfully" }));
         }
     }
 }
